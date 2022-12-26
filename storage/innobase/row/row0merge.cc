@@ -466,9 +466,10 @@ row_merge_buf_redundant_convert(
 @param[in]	new_table	new table
 @param[in,out]	psort_info	parallel sort info
 @param[in,out]	row		table row
-@param[in]	history_row	row is historical in a system-versioned table
 @param[in]	ext		cache of externally stored
 				column prefixes, or NULL
+@param[in]	history_fts	row is historical in a system-versioned table
+				on which a FTS_DOC_ID_INDEX(FTS_DOC_ID) exists
 @param[in,out]	doc_id		Doc ID if we are creating
 				FTS index
 @param[in,out]	conv_heap	memory heap where to allocate data when
@@ -490,8 +491,8 @@ row_merge_buf_add(
 	const dict_table_t*	new_table,
 	fts_psort_t*		psort_info,
 	dtuple_t*		row,
-	const bool		history_row,
 	const row_ext_t*	ext,
+	const bool		history_fts,
 	doc_id_t*		doc_id,
 	mem_heap_t*		conv_heap,
 	dberr_t*		err,
@@ -556,7 +557,7 @@ error:
 			: NULL;
 
 		/* Process the Doc ID column */
-		if (!v_col && index->table->fts && (*doc_id || history_row)
+		if (!v_col && (history_fts || *doc_id)
 		    && col->ind == index->table->fts->doc_col) {
 			fts_write_doc_id((byte*) &write_doc_id, *doc_id);
 
@@ -617,7 +618,7 @@ error:
 			}
 
 			/* Tokenize and process data for FTS */
-			if (!history_row && (index->type & DICT_FTS)) {
+			if (!history_fts && (index->type & DICT_FTS)) {
 				fts_doc_item_t*	doc_item;
 				byte*		value;
 				void*		ptr;
@@ -1717,7 +1718,6 @@ row_merge_read_clustered_index(
 	char			new_sys_trx_end[8];
 	byte			any_autoinc_data[8] = {0};
 	bool			vers_update_trt = false;
-	bool			history_row = false;
 
 	DBUG_ENTER("row_merge_read_clustered_index");
 
@@ -1947,6 +1947,7 @@ corrupted_metadata:
 		dtuple_t*	row;
 		row_ext_t*	ext;
 		page_cur_t*	cur	= btr_pcur_get_page_cur(&pcur);
+		bool history_row, history_fts = false;
 
 		stage->n_pk_recs_inc();
 
@@ -2206,11 +2207,10 @@ end_of_index:
 					   row_heap);
 		ut_ad(row);
 
-		if (new_table->versioned()) {
-			const dfield_t* dfield = dtuple_get_nth_field(
-				row, new_table->vers_end);
-			history_row = dfield->vers_history_row();
-		}
+		history_row = new_table->versioned()
+		       && dtuple_get_nth_field(row, new_table->vers_end)
+		       ->vers_history_row();
+		history_fts = history_row && new_table->fts;
 
 		for (ulint i = 0; i < n_nonnull; i++) {
 			dfield_t*	field	= &row->fields[nonnull[i]];
@@ -2240,7 +2240,7 @@ end_of_index:
 		}
 
 		/* Get the next Doc ID */
-		if (add_doc_id && !history_row) {
+		if (add_doc_id && !history_fts) {
 			doc_id++;
 		} else {
 			doc_id = 0;
@@ -2396,7 +2396,7 @@ write_buffers:
 			if (UNIV_LIKELY
 			    (row && (rows_added = row_merge_buf_add(
 					buf, fts_index, old_table, new_table,
-					psort_info, row, history_row, ext,
+					psort_info, row, ext, history_fts,
 					&doc_id, conv_heap, &err,
 					&v_heap, eval_table, trx,
 					col_collate)))) {
@@ -2724,8 +2724,8 @@ write_buffers:
 				if (UNIV_UNLIKELY
 				    (!(rows_added = row_merge_buf_add(
 						buf, fts_index, old_table,
-						new_table, psort_info, row,
-						history_row, ext, &doc_id,
+						new_table, psort_info,
+						row, ext, history_fts, &doc_id,
 						conv_heap, &err, &v_heap,
 						eval_table, trx, col_collate)))) {
                                         /* An empty buffer should have enough
