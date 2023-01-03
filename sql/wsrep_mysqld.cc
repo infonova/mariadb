@@ -620,19 +620,9 @@ int wsrep_init()
 
   if ((rcode= wsrep_load(wsrep_provider, &wsrep, wsrep_log_cb)) != WSREP_OK)
   {
-    if (strcasecmp(wsrep_provider, WSREP_NONE))
-    {
-      WSREP_ERROR("wsrep_load(%s) failed: %s (%d). Reverting to no provider.",
-                  wsrep_provider, strerror(rcode), rcode);
-      strcpy((char*)wsrep_provider, WSREP_NONE); // damn it's a dirty hack
-      return wsrep_init();
-    }
-    else /* this is for recursive call above */
-    {
-      WSREP_ERROR("Could not revert to no provider: %s (%d). Need to abort.",
-                  strerror(rcode), rcode);
-      unireg_abort(1);
-    }
+    WSREP_ERROR("wsrep_load(%s) failed: %s (%d). Need to abort.",
+                wsrep_provider, strerror(rcode), rcode);
+    unireg_abort(1);
   }
 
   if (!WSREP_PROVIDER_EXISTS)
@@ -1661,10 +1651,10 @@ static bool wsrep_can_run_in_toi(THD *thd, const char *db, const char *table,
 }
 
 /*
-  returns: 
+  returns:
    0: statement was replicated as TOI
    1: TOI replication was skipped
-  -1: TOI replication failed 
+  -1: TOI replication failed
  */
 static int wsrep_TOI_begin(THD *thd, char *db_, char *table_,
                            const TABLE_LIST* table_list,
@@ -2664,11 +2654,11 @@ enum wsrep_exec_mode wsrep_thd_exec_mode(THD *thd)
 
 const char *wsrep_thd_exec_mode_str(THD *thd)
 {
-  return 
+  return
     (!thd) ? "void" :
     (thd->wsrep_exec_mode == LOCAL_STATE)  ? "local"         :
     (thd->wsrep_exec_mode == REPL_RECV)    ? "applier"       :
-    (thd->wsrep_exec_mode == TOTAL_ORDER)  ? "total order"   : 
+    (thd->wsrep_exec_mode == TOTAL_ORDER)  ? "total order"   :
     (thd->wsrep_exec_mode == LOCAL_COMMIT) ? "local commit"  : "void";
 }
 
@@ -2681,12 +2671,12 @@ enum wsrep_query_state wsrep_thd_query_state(THD *thd)
 
 const char *wsrep_thd_query_state_str(THD *thd)
 {
-  return 
-    (!thd) ? "void" : 
+  return
+    (!thd) ? "void" :
     (thd->wsrep_query_state == QUERY_IDLE)        ? "idle"          :
     (thd->wsrep_query_state == QUERY_EXEC)        ? "executing"     :
     (thd->wsrep_query_state == QUERY_COMMITTING)  ? "committing"    :
-    (thd->wsrep_query_state == QUERY_EXITING)     ? "exiting"       : 
+    (thd->wsrep_query_state == QUERY_EXITING)     ? "exiting"       :
     (thd->wsrep_query_state == QUERY_ROLLINGBACK) ? "rolling back"  : "void";
 }
 
@@ -2699,14 +2689,14 @@ enum wsrep_conflict_state wsrep_thd_get_conflict_state(THD *thd)
 
 const char *wsrep_thd_conflict_state_str(THD *thd)
 {
-  return 
+  return
     (!thd) ? "void" :
     (thd->wsrep_conflict_state == NO_CONFLICT)      ? "no conflict"  :
     (thd->wsrep_conflict_state == MUST_ABORT)       ? "must abort"   :
     (thd->wsrep_conflict_state == ABORTING)         ? "aborting"     :
-    (thd->wsrep_conflict_state == MUST_REPLAY)      ? "must replay"  : 
-    (thd->wsrep_conflict_state == REPLAYING)        ? "replaying"    : 
-    (thd->wsrep_conflict_state == RETRY_AUTOCOMMIT) ? "retrying"     : 
+    (thd->wsrep_conflict_state == MUST_REPLAY)      ? "must replay"  :
+    (thd->wsrep_conflict_state == REPLAYING)        ? "replaying"    :
+    (thd->wsrep_conflict_state == RETRY_AUTOCOMMIT) ? "retrying"     :
     (thd->wsrep_conflict_state == CERT_FAILURE)     ? "cert failure" : "void";
 }
 
@@ -2729,13 +2719,13 @@ void wsrep_thd_UNLOCK(THD *thd)
 }
 
 
-extern "C" time_t wsrep_thd_query_start(THD *thd) 
+extern "C" time_t wsrep_thd_query_start(THD *thd)
 {
   return thd->query_start();
 }
 
 
-extern "C" uint32 wsrep_thd_wsrep_rand(THD *thd) 
+extern "C" uint32 wsrep_thd_wsrep_rand(THD *thd)
 {
   return thd->wsrep_rand;
 }
@@ -2746,7 +2736,7 @@ longlong wsrep_thd_trx_seqno(THD *thd)
 }
 
 
-extern "C" query_id_t wsrep_thd_query_id(THD *thd) 
+extern "C" query_id_t wsrep_thd_query_id(THD *thd)
 {
   return thd->query_id;
 }
@@ -2777,13 +2767,13 @@ const char *wsrep_thd_query(THD *thd)
 }
 
 
-extern "C" query_id_t wsrep_thd_wsrep_last_query_id(THD *thd) 
+extern "C" query_id_t wsrep_thd_wsrep_last_query_id(THD *thd)
 {
   return thd->wsrep_last_query_id;
 }
 
 
-extern "C" void wsrep_thd_set_wsrep_last_query_id(THD *thd, query_id_t id) 
+extern "C" void wsrep_thd_set_wsrep_last_query_id(THD *thd, query_id_t id)
 {
   thd->wsrep_last_query_id= id;
 }
