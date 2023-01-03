@@ -34,6 +34,7 @@
 #include "wsrep_server_state.h"
 #include "wsrep_var.h" // wsrep_refresh_provider_options()
 
+#ifdef WITH_WSREP
 static bool provider_plugin_enabled= false;
 
 /* Prototype for provider system variables */
@@ -369,3 +370,5 @@ maria_declare_plugin(wsrep)
   MariaDB_PLUGIN_MATURITY_STABLE     /* Maturity */
 }
 maria_declare_plugin_end;
+
+#endif /* WITH_WSREP */

@@ -1,0 +1,4 @@
+--source include/have_wsrep.inc
+--source include/have_innodb.inc
+
+SELECT @@wsrep_on;
